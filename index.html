@@ -38,8 +38,14 @@
       min-height: 100vh;
     }
 
+    @media (max-width: 768px) {
+      body {
+        padding: 16px;
+      }
+    }
+
     .container {
-      max-width: 1280px;
+      max-width: 1600px; /* تكبير العرض على اللابتوب */
       margin: 0 auto;
     }
 
@@ -242,10 +248,13 @@
       border: 1px solid var(--border);
       overflow: hidden;
       background: rgba(15,23,42,0.95);
+      overflow-x: auto;              /* للسحب يمين/يسار */
+      -webkit-overflow-scrolling: touch;
     }
 
     table {
       width: 100%;
+      min-width: 1100px;             /* حتى لا تضيق الأعمدة على الجوال */
       border-collapse: collapse;
       font-size: 12px;
       color: var(--text);
@@ -343,11 +352,11 @@
               <tr>
                 <th>اسم المنافسة</th>
                 <th>الجهة</th>
-                <th>التصنيف</th>
                 <th>الشركة</th>
-                <th>شركة الترسية</th>
+                <th>التصنيف</th>
                 <th>تاريخ إغلاق المنافسة</th>
                 <th>مبلغ التقديم</th>
+                <th>شركة الترسية</th>
                 <th>قيمة الترسية</th>
               </tr>
             </thead>
@@ -386,20 +395,18 @@
     /*******************************************
      * إعدادات عامة
      *******************************************/
-    // 1) رابط ملف الماستر CSV (في نفس المجلد)
     const DATA_URL = "master.csv";
 
-    // 2) أسماء الأعمدة داخل ملف الـ CSV (يجب أن تطابق أسماء الأعمدة في الماستر)
+    // أسماء الأعمدة كما هي في CSV
     const COLUMN_TENDER_NAME    = "اسم المنافسة";
     const COLUMN_CLIENT         = "الجهة";
     const COLUMN_STATUS         = "التصنيف";
-    const COLUMN_COMPANY_COL    = "الشركة";        // اسم عمود الشركة (لو مختلف نعدله)
-    const COLUMN_AWARD_COMPANY  = "شركة الترسية";  // اسم عمود شركة الترسية في الماستر
+    const COLUMN_COMPANY_COL    = "الشركة";        // عمود الشركة
+    const COLUMN_AWARD_COMPANY  = "شركة الترسية";  // عمود شركة الترسية
     const COLUMN_DATE_CLOSE     = "تاريخ إغلاق المنافسة";
-    const COLUMN_SUBMIT_AMOUNT  = "مبلغ التقديم";  // اختياري
-    const COLUMN_AWARD_VALUE    = "قيمة الترسية";  // اختياري
+    const COLUMN_SUBMIT_AMOUNT  = "مبلغ التقديم";
+    const COLUMN_AWARD_VALUE    = "قيمة الترسية";
 
-    // 3) قائمة التصنيفات المعتمدة (لترتيب العرض)
     const ALL_STATUSES = [
       "فرص محتملة",
       "فرص - تم إرسال إيميل",
@@ -431,7 +438,6 @@
       "دعوة تأهيل المسبق - لم يتم التقديم"
     ];
 
-    // 4) قائمة الشركات (تستخدم أيضًا لاكتشاف العمود لو اسمه مختلف)
     const ALL_COMPANIES = [
       "البيئة",
       "البيطرة",
@@ -450,9 +456,6 @@
       "مشاركة خاصة"
     ];
 
-    /*******************************************
-     * متغيرات
-     *******************************************/
     let allRows = [];
     let filteredRows = [];
 
@@ -485,7 +488,6 @@
       });
     }
 
-    // تنظيف الصف
     function cleanRow(row) {
       const clean = {};
       for (const key in row) {
@@ -495,14 +497,9 @@
       return clean;
     }
 
-    /*******************************************
-     * دوال مساعدة لاستخراج الشركة وشركة الترسية
-     *******************************************/
     function getCompany(row) {
-      // أولاً: حاول باستخدام اسم العمود المحدد
       if (row[COLUMN_COMPANY_COL]) return row[COLUMN_COMPANY_COL];
-
-      // ثانيًا: حاول اكتشاف العمود عبر القيم
+      // محاولة اكتشاف العمود تلقائيًا
       for (const key in row) {
         const val = row[key];
         if (!val) continue;
@@ -512,7 +509,6 @@
     }
 
     function getAwardCompany(row) {
-      // شركة الترسية من عمود محدد، لو غير موجود يرجع فارغ
       return row[COLUMN_AWARD_COMPANY] || "";
     }
 
@@ -520,7 +516,6 @@
      * الفلاتر
      *******************************************/
     function initFilters() {
-      // تعبئة قيم التصنيفات
       ALL_STATUSES.forEach(s => {
         const opt = document.createElement("option");
         opt.value = s;
@@ -528,7 +523,6 @@
         statusFilter.appendChild(opt);
       });
 
-      // تعبئة الشركات من القائمة
       ALL_COMPANIES.forEach(c => {
         const opt = document.createElement("option");
         opt.value = c;
@@ -621,11 +615,11 @@
         tr.innerHTML = `
           <td>${escapeHtml(row[COLUMN_TENDER_NAME] || "")}</td>
           <td class="text-muted">${escapeHtml(row[COLUMN_CLIENT] || "")}</td>
-          <td><span class="tag">${escapeHtml(status)}</span></td>
           <td><span class="tag">${escapeHtml(company)}</span></td>
-          <td><span class="tag">${escapeHtml(awardCompany)}</span></td>
+          <td><span class="tag">${escapeHtml(status)}</span></td>
           <td class="text-muted">${escapeHtml(row[COLUMN_DATE_CLOSE] || "")}</td>
           <td class="text-muted">${formatMaybeCurrency(row[COLUMN_SUBMIT_AMOUNT])}</td>
+          <td><span class="tag">${escapeHtml(awardCompany)}</span></td>
           <td class="text-muted">${formatMaybeCurrency(row[COLUMN_AWARD_VALUE])}</td>
         `;
         tendersBody.appendChild(tr);
@@ -635,7 +629,6 @@
     function renderStats() {
       const total = filteredRows.length || 1;
 
-      // حسب التصنيف
       const byStatus = countByGetter(filteredRows, r => r[COLUMN_STATUS] || "");
       statusStats.innerHTML = "";
       ALL_STATUSES.forEach(status => {
@@ -645,7 +638,6 @@
         statusStats.appendChild(createStatRow(status, count, pct));
       });
 
-      // حسب الشركة
       const byCompany = countByGetter(filteredRows, getCompany);
       companyStats.innerHTML = "";
       ALL_COMPANIES.forEach(comp => {
