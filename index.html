@@ -290,25 +290,6 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-
-    .export-btn {
-      padding: 7px 12px;
-      border-radius: 999px;
-      border: none;
-      cursor: pointer;
-      background: radial-gradient(circle at top, rgba(56,189,248,0.8), rgba(37,99,235,1));
-      color: #0b1120;
-      font-size: 12px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .export-btn:active {
-      transform: translateY(1px);
-    }
-
   </style>
 </head>
 <body>
@@ -319,7 +300,7 @@
       </div>
       <h1>بوابة المنافسات – عرض الماستر</h1>
       <p>
-        عرض تحليلي لجميع المنافسات حسب التصنيفات، الشركات، والنطاقات – قراءة فقط.
+        عرض تحليلي لجميع المنافسات حسب التصنيفات والشركات – قراءة فقط.
       </p>
     </header>
 
@@ -345,12 +326,6 @@
             </select>
           </div>
           <div class="field">
-            <label>النطاق / المجال</label>
-            <select id="scopeFilter">
-              <option value="">جميع النطاقات</option>
-            </select>
-          </div>
-          <div class="field">
             <label>بحث عام</label>
             <input id="searchInput" type="search" placeholder="ابحث بالاسم / الجهة / ملاحظات..." />
           </div>
@@ -370,7 +345,7 @@
                 <th>الجهة</th>
                 <th>التصنيف</th>
                 <th>الشركة</th>
-                <th>النطاق</th>
+                <th>شركة الترسية</th>
                 <th>تاريخ إغلاق المنافسة</th>
                 <th>مبلغ التقديم</th>
                 <th>قيمة الترسية</th>
@@ -387,9 +362,6 @@
       <section class="card">
         <div class="card-title">
           <span>إحصاءات التصنيفات</span>
-          <button class="export-btn" id="exportView">
-            تصدير النتائج CSV
-          </button>
         </div>
         <div class="stats-list" id="statusStats">
           <!-- تعبئة ديناميكياً -->
@@ -399,13 +371,6 @@
           <span>إحصاءات الشركات</span>
         </div>
         <div class="stats-list" id="companyStats">
-          <!-- تعبئة ديناميكياً -->
-        </div>
-
-        <div class="card-title" style="margin-top: 12px;">
-          <span>إحصاءات النطاق / المجال</span>
-        </div>
-        <div class="stats-list" id="scopeStats">
           <!-- تعبئة ديناميكياً -->
         </div>
       </section>
@@ -422,19 +387,19 @@
      * إعدادات عامة
      *******************************************/
     // 1) رابط ملف الماستر CSV (في نفس المجلد)
-    const DATA_URL = "master.csv"; // عدل الاسم أو المسار إذا رغبت
+    const DATA_URL = "master.csv";
 
     // 2) أسماء الأعمدة داخل ملف الـ CSV (يجب أن تطابق أسماء الأعمدة في الماستر)
-    const COLUMN_TENDER_NAME   = "اسم المنافسة";
-    const COLUMN_CLIENT        = "الجهة";
-    const COLUMN_STATUS        = "التصنيف";
-    const COLUMN_COMPANY       = "الشركة";
-    const COLUMN_SCOPE         = "النطاق";
-    const COLUMN_DATE_CLOSE    = "تاريخ إغلاق المنافسة";
-    const COLUMN_SUBMIT_AMOUNT = "مبلغ التقديم";    // اختياري – إن لم يوجد سيظهر فارغ
-    const COLUMN_AWARD_VALUE   = "قيمة الترسية";    // اختياري
+    const COLUMN_TENDER_NAME    = "اسم المنافسة";
+    const COLUMN_CLIENT         = "الجهة";
+    const COLUMN_STATUS         = "التصنيف";
+    const COLUMN_COMPANY_COL    = "الشركة";        // اسم عمود الشركة (لو مختلف نعدله)
+    const COLUMN_AWARD_COMPANY  = "شركة الترسية";  // اسم عمود شركة الترسية في الماستر
+    const COLUMN_DATE_CLOSE     = "تاريخ إغلاق المنافسة";
+    const COLUMN_SUBMIT_AMOUNT  = "مبلغ التقديم";  // اختياري
+    const COLUMN_AWARD_VALUE    = "قيمة الترسية";  // اختياري
 
-    // 3) قائمة التصنيفات المعتمدة (للترتيب والعرض)
+    // 3) قائمة التصنيفات المعتمدة (لترتيب العرض)
     const ALL_STATUSES = [
       "فرص محتملة",
       "فرص - تم إرسال إيميل",
@@ -466,7 +431,7 @@
       "دعوة تأهيل المسبق - لم يتم التقديم"
     ];
 
-    // 4) قائمة الشركات
+    // 4) قائمة الشركات (تستخدم أيضًا لاكتشاف العمود لو اسمه مختلف)
     const ALL_COMPANIES = [
       "البيئة",
       "البيطرة",
@@ -485,13 +450,6 @@
       "مشاركة خاصة"
     ];
 
-    // 5) قائمة النطاق / المجال
-    const ALL_SCOPES = [
-      "ضمن نطاق الشركة",
-      "نطاق جديد أو مختلف",
-      "نطاق مشترك"
-    ];
-
     /*******************************************
      * متغيرات
      *******************************************/
@@ -500,15 +458,12 @@
 
     const statusFilter  = document.getElementById("statusFilter");
     const companyFilter = document.getElementById("companyFilter");
-    const scopeFilter   = document.getElementById("scopeFilter");
     const searchInput   = document.getElementById("searchInput");
 
     const summaryKpis   = document.getElementById("summaryKpis");
     const tendersBody   = document.getElementById("tendersBody");
     const statusStats   = document.getElementById("statusStats");
     const companyStats  = document.getElementById("companyStats");
-    const scopeStats    = document.getElementById("scopeStats");
-    const exportViewBtn = document.getElementById("exportView");
 
     /*******************************************
      * تحميل البيانات
@@ -530,7 +485,7 @@
       });
     }
 
-    // تنظيف الصف (ت trims بسيطة)
+    // تنظيف الصف
     function cleanRow(row) {
       const clean = {};
       for (const key in row) {
@@ -538,6 +493,27 @@
         clean[key.trim()] = String(row[key]).trim();
       }
       return clean;
+    }
+
+    /*******************************************
+     * دوال مساعدة لاستخراج الشركة وشركة الترسية
+     *******************************************/
+    function getCompany(row) {
+      // أولاً: حاول باستخدام اسم العمود المحدد
+      if (row[COLUMN_COMPANY_COL]) return row[COLUMN_COMPANY_COL];
+
+      // ثانيًا: حاول اكتشاف العمود عبر القيم
+      for (const key in row) {
+        const val = row[key];
+        if (!val) continue;
+        if (ALL_COMPANIES.includes(val)) return val;
+      }
+      return "";
+    }
+
+    function getAwardCompany(row) {
+      // شركة الترسية من عمود محدد، لو غير موجود يرجع فارغ
+      return row[COLUMN_AWARD_COMPANY] || "";
     }
 
     /*******************************************
@@ -552,6 +528,7 @@
         statusFilter.appendChild(opt);
       });
 
+      // تعبئة الشركات من القائمة
       ALL_COMPANIES.forEach(c => {
         const opt = document.createElement("option");
         opt.value = c;
@@ -559,38 +536,22 @@
         companyFilter.appendChild(opt);
       });
 
-      ALL_SCOPES.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s;
-        opt.textContent = s;
-        scopeFilter.appendChild(opt);
-      });
-
       statusFilter.addEventListener("change", applyFilters);
       companyFilter.addEventListener("change", applyFilters);
-      scopeFilter.addEventListener("change", applyFilters);
-      searchInput.addEventListener("input", () => {
-        // تأخير بسيط يمكن إضافته لو أردت
-        applyFilters();
-      });
-
-      exportViewBtn.addEventListener("click", exportCurrentView);
+      searchInput.addEventListener("input", applyFilters);
     }
 
     function applyFilters() {
       const sFilter = statusFilter.value;
       const cFilter = companyFilter.value;
-      const scFilter = scopeFilter.value;
       const q = searchInput.value.trim().toLowerCase();
 
       filteredRows = allRows.filter(row => {
-        const status = row[COLUMN_STATUS] || "";
-        const company = row[COLUMN_COMPANY] || "";
-        const scope = row[COLUMN_SCOPE] || "";
+        const status  = row[COLUMN_STATUS] || "";
+        const company = getCompany(row);
 
         if (sFilter && status !== sFilter) return false;
         if (cFilter && company !== cFilter) return false;
-        if (scFilter && scope !== scFilter) return false;
 
         if (q) {
           const combined =
@@ -598,7 +559,7 @@
             (row[COLUMN_CLIENT] || "") + " " +
             (status || "") + " " +
             (company || "") + " " +
-            (scope || "");
+            (getAwardCompany(row) || "");
           if (!combined.toLowerCase().includes(q)) return false;
         }
 
@@ -621,7 +582,6 @@
       const total = filteredRows.length;
       const totalAll = allRows.length || 1;
 
-      // إحصاء بسيط لمجموع التقديم/الترسية إن وجد
       let sumSubmit = 0;
       let sumAward  = 0;
 
@@ -633,7 +593,6 @@
       });
 
       summaryKpis.innerHTML = "";
-
       createKpi("عدد المنافسات (بعد الفلترة)", total.toLocaleString(), `من أصل ${totalAll.toLocaleString()} في الماستر`);
       createKpi("إجمالي مبلغ التقديم", sumSubmit ? formatCurrency(sumSubmit) : "—", "");
       createKpi("إجمالي قيمة الترسية", sumAward ? formatCurrency(sumAward) : "—", "");
@@ -654,13 +613,17 @@
       tendersBody.innerHTML = "";
 
       filteredRows.forEach(row => {
+        const status        = row[COLUMN_STATUS] || "";
+        const company       = getCompany(row);
+        const awardCompany  = getAwardCompany(row);
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${escapeHtml(row[COLUMN_TENDER_NAME] || "")}</td>
           <td class="text-muted">${escapeHtml(row[COLUMN_CLIENT] || "")}</td>
-          <td><span class="tag">${escapeHtml(row[COLUMN_STATUS] || "")}</span></td>
-          <td><span class="tag">${escapeHtml(row[COLUMN_COMPANY] || "")}</span></td>
-          <td><span class="tag">${escapeHtml(row[COLUMN_SCOPE] || "")}</span></td>
+          <td><span class="tag">${escapeHtml(status)}</span></td>
+          <td><span class="tag">${escapeHtml(company)}</span></td>
+          <td><span class="tag">${escapeHtml(awardCompany)}</span></td>
           <td class="text-muted">${escapeHtml(row[COLUMN_DATE_CLOSE] || "")}</td>
           <td class="text-muted">${formatMaybeCurrency(row[COLUMN_SUBMIT_AMOUNT])}</td>
           <td class="text-muted">${formatMaybeCurrency(row[COLUMN_AWARD_VALUE])}</td>
@@ -673,7 +636,7 @@
       const total = filteredRows.length || 1;
 
       // حسب التصنيف
-      const byStatus = countBy(filteredRows, COLUMN_STATUS);
+      const byStatus = countByGetter(filteredRows, r => r[COLUMN_STATUS] || "");
       statusStats.innerHTML = "";
       ALL_STATUSES.forEach(status => {
         const count = byStatus[status] || 0;
@@ -683,23 +646,13 @@
       });
 
       // حسب الشركة
-      const byCompany = countBy(filteredRows, COLUMN_COMPANY);
+      const byCompany = countByGetter(filteredRows, getCompany);
       companyStats.innerHTML = "";
       ALL_COMPANIES.forEach(comp => {
         const count = byCompany[comp] || 0;
         if (!count) return;
         const pct = (count / total) * 100;
         companyStats.appendChild(createStatRow(comp, count, pct));
-      });
-
-      // حسب النطاق
-      const byScope = countBy(filteredRows, COLUMN_SCOPE);
-      scopeStats.innerHTML = "";
-      ALL_SCOPES.forEach(sc => {
-        const count = byScope[sc] || 0;
-        if (!count) return;
-        const pct = (count / total) * 100;
-        scopeStats.appendChild(createStatRow(sc, count, pct));
       });
     }
 
@@ -721,33 +674,12 @@
     }
 
     /*******************************************
-     * تصدير النتائج الحالية CSV
-     *******************************************/
-    function exportCurrentView() {
-      if (!filteredRows.length) {
-        alert("لا توجد بيانات لتصديرها.");
-        return;
-      }
-      const csv = Papa.unparse(filteredRows);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "Tilad_Tenders_View.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    /*******************************************
      * مساعدات
      *******************************************/
-    function countBy(rows, field) {
+    function countByGetter(rows, getter) {
       const map = {};
       rows.forEach(r => {
-        const key = (r[field] || "").trim();
+        const key = (getter(r) || "").trim();
         if (!key) return;
         map[key] = (map[key] || 0) + 1;
       });
